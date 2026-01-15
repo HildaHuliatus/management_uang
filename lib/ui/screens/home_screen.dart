@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'tambah_transaksi_screen.dart';
+import 'package:intl/intl.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'account_balance_wallet':
         return Icons.account_balance_wallet;
 
+      case 'lainnya':
+        return Icons.more_horiz;
+
       default:
         return Icons.category_outlined; // fallback aman
     }
@@ -68,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================= FETCH SEMUA DATA =================
   Future<void> fetchDashboard() async {
     try {
-      // ambil user (1 user saja dulu)
+      // ===== 1. AMBIL USER =====
       final user = await supabase
           .from('tbl_user')
           .select('id, full_name')
@@ -76,18 +81,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final userId = user['id'];
 
-      // ambil transaksi
-      final transaksi = await supabase
+      // ===== 2. AMBIL SEMUA TRANSAKSI (UNTUK TOTAL) =====
+      final allTransaksi = await supabase
           .from('tbl_transaction')
-          .select(
-              'amount, transaction_type, transaction_date, tbl_category(name, icon)')
-          .eq('user_id', userId)
-          .order('transaction_date', ascending: false);
+          .select('amount, transaction_type')
+          .eq('user_id', userId);
 
       double totalIn = 0;
       double totalOut = 0;
 
-      for (var t in transaksi) {
+      for (var t in allTransaksi) {
         if (t['transaction_type'] == 'income') {
           totalIn += (t['amount'] as num).toDouble();
         } else {
@@ -95,13 +98,30 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
+      // ===== 3. TRANSAKSI 1 BULAN TERAKHIR =====
+      final DateTime oneMonthAgo =
+          DateTime.now().subtract(const Duration(days: 30));
+
+      final lastTransaksi = await supabase
+          .from('tbl_transaction')
+          .select(
+              'amount, transaction_type, transaction_date, tbl_category(name, icon)')
+          .eq('user_id', userId)
+          .gte(
+            'transaction_date',
+            oneMonthAgo.toIso8601String().split('T').first,
+          )
+          .order('transaction_date', ascending: false)
+          .limit(5);
+
+      // ===== 4. SET STATE =====
       setState(() {
         full_name = user['full_name'];
         pemasukan = totalIn;
         pengeluaran = totalOut;
         saldo = totalIn - totalOut;
         transaksiTerakhir =
-            List<Map<String, dynamic>>.from(transaksi.take(5));
+            List<Map<String, dynamic>>.from(lastTransaksi);
         isLoading = false;
       });
     } catch (e) {
@@ -112,6 +132,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
+  final NumberFormat rupiahFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 2,
+  );
+
 
   // ================= UI (TIDAK DIUBAH) =================
   @override
@@ -182,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 IconButton(
                   icon: const Icon(
-                    Icons.notifications_none,
+                    Icons.settings,
                     color: Colors.white,
                   ),
                   onPressed: () {},
@@ -221,7 +248,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Rp ${saldo.toStringAsFixed(0)}",
+                        //"Rp ${saldo.toStringAsFixed(0)}",
+                        rupiahFormat.format(saldo),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
@@ -239,14 +267,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _infoCard(
                       "Pemasukan",
-                      "Rp ${pemasukan.toStringAsFixed(0)}",
+                      //"Rp ${pemasukan.toStringAsFixed(0)}",
+                      rupiahFormat.format(pemasukan),
+
                       successGreen,
                       Icons.arrow_downward,
                     ),
                     const SizedBox(width: 12),
                     _infoCard(
                       "Pengeluaran",
-                      "Rp ${pengeluaran.toStringAsFixed(0)}",
+                      //"Rp ${pengeluaran.toStringAsFixed(0)}",
+                      rupiahFormat.format(pengeluaran),
+
                       dangerRed,
                       Icons.arrow_upward,
                     ),
@@ -274,11 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   return _transactionTile(
                     category['name'],
-                    "Rp ${trx['amount']}",
+                    rupiahFormat.format(trx['amount']),
                     income,
                     getCategoryIcon(iconName),
                     trx['transaction_date'],
                   );
+
                 }),
 
                 const SizedBox(height: 12),

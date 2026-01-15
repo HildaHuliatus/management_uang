@@ -305,6 +305,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
+                    // ignore: deprecated_member_use
                     scaffoldBg.withOpacity(0.0),
                     scaffoldBg
                   ],
@@ -314,16 +315,71 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final cleanValue =
-                        _jumlahController.text.replaceAll('.', '');
-                    final description = _descriptionController.text;
+                  onPressed: () async {
+                    try {
+                      // 1. Ambil user (sementara 1 user)
+                      final user = await supabase
+                          .from('tbl_user')
+                          .select('id')
+                          .single();
 
-                    debugPrint(
-                        'Kategori: $_selectedCategory | Jumlah: $cleanValue | Deskripsi: $description');
+                      final userId = user['id'];
 
-                    Navigator.pop(context);
+                      // 2. Ambil category_id berdasarkan nama kategori
+                      final category = await supabase
+                      .from('tbl_category')
+                      .select('id')
+                      .eq('name', _selectedCategory)
+                      .eq(
+                        'type',
+                        _isPengeluaran ? 'expense' : 'income',
+                      )
+                      .single();
+
+
+                      final categoryId = category['id'];
+
+                      // 3. Bersihkan jumlah (hapus titik)
+                      final cleanAmount =
+                          _jumlahController.text.replaceAll('.', '');
+
+                      if (cleanAmount.isEmpty) {
+                        // ignore: use_build_context_synchronously
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Jumlah tidak boleh kosong')),
+                        );
+                        return;
+                      }
+
+                      // 4. INSERT ke tbl_transaction
+                      await supabase.from('tbl_transaction').insert({
+                        'user_id': userId,
+                        'category_id': categoryId,
+                        'amount': double.parse(cleanAmount),
+                        'description': _descriptionController.text,
+                        'transaction_type':
+                            _isPengeluaran ? 'expense' : 'income',
+                        'transaction_date':
+                            DateFormat('yyyy-MM-dd').format(_selectedDate),
+                      });
+
+                      // ignore: use_build_context_synchronously
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Transaksi berhasil disimpan')),
+                      );
+
+                      // ignore: use_build_context_synchronously
+                      Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint('ERROR INSERT TRANSAKSI: $e');
+                      // ignore: use_build_context_synchronously
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Gagal menyimpan transaksi')),
+                      );
+                    }
                   },
+
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
                     shape: RoundedRectangleBorder(
@@ -416,6 +472,9 @@ IconData getCategoryIcon(String? iconName) {
       return Icons.directions_car;
     case 'account_balance_wallet':
       return Icons.account_balance_wallet;
+    case 'lainnya':
+      return Icons.more_horiz
+;
     default:
       return Icons.category;
   }

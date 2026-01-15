@@ -151,7 +151,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                           }
                         });
                       }),
-                      _buildToggleItem('Pemasukan', !_isPengeluaran, () {
+                      _buildToggleItem('Pemasukann', !_isPengeluaran, () {
                         setState(() {
                           _isPengeluaran = false;
                           if (_kategoriPemasukan.isNotEmpty) {

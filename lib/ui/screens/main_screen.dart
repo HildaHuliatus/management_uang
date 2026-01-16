@@ -21,7 +21,6 @@ class _MainScreenState extends State<MainScreen> {
     _selectedIndex = widget.initialIndex;
   }
 
-  // UPDATE: Tambahkan widget halaman di sini sesuai urutan menu
   static final List<Widget> _screens = [
     const HomeScreen(),    
     const TransaksiScreen(), 
@@ -37,7 +36,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Menggunakan IndexedStack agar status halaman (seperti scroll) tidak hilang saat pindah tab
       body: IndexedStack(
         index: _selectedIndex,
         children: _screens,

@@ -9,20 +9,19 @@ class TransaksiScreen extends StatefulWidget {
 }
 
 class _TransaksiScreenState extends State<TransaksiScreen> {
-  // Warna Tema
+  
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
   final Color primaryBlue = const Color(0xFF3B82F6);
   final Color successGreen = const Color(0xFF10B981);
   final Color dangerRed = const Color(0xFFEF4444);
 
-  // State untuk Filter
+ 
   String _selectedType = 'Semua';
   String _selectedCategory = 'Semua Kategori';
 
   final List<String> _types = ['Semua', 'Pengeluaran', 'Pemasukan'];
 
-  // Data Kategori Sesuai Permintaan
   final List<Map<String, dynamic>> _kategoriPengeluaran = [
     {'nama': 'Makanan', 'icon': Icons.restaurant},
     {'nama': 'Transport', 'icon': Icons.directions_car},
@@ -41,7 +40,6 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     {'nama': 'Lainnya', 'icon': Icons.more_horiz},
   ];
 
-  // Fungsi untuk mendapatkan list kategori secara dinamis
   List<String> _getDropdownCategories() {
     List<String> list = ['Semua Kategori'];
     if (_selectedType == 'Pengeluaran') {
@@ -49,7 +47,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     } else if (_selectedType == 'Pemasukan') {
       list.addAll(_kategoriPemasukan.map((e) => e['nama'] as String));
     } else {
-      // Jika 'Semua', gabungkan semua kategori unik
+      
       var allNames = {
         ..._kategoriPengeluaran.map((e) => e['nama'] as String),
         ..._kategoriPemasukan.map((e) => e['nama'] as String)
@@ -64,7 +62,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     return Scaffold(
       backgroundColor: scaffoldBg,
       
-      // ===== APP BAR =====
+     
       appBar: AppBar(
         backgroundColor: scaffoldBg,
         elevation: 0,
@@ -80,7 +78,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
         
       ),
 
-      // ===== FLOATING ACTION BUTTON =====
+      
       floatingActionButton: FloatingActionButton(
         backgroundColor: primaryBlue,
         onPressed: () {
@@ -94,7 +92,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
       body: Column(
         children: [
-          // 1. SEARCH BAR
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
@@ -113,13 +111,13 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
             ),
           ),
 
-          // 2. FILTER DROPDOWNS (CHIPS STYLE)
+          
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                // Filter Tipe
+              
                 _buildFilterDropdown(
                   value: _selectedType,
                   items: _types,
@@ -131,7 +129,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
                   },
                 ),
                 const SizedBox(width: 10),
-                // Filter Kategori (Dinamis)
+                
                 _buildFilterDropdown(
                   value: _selectedCategory,
                   items: _getDropdownCategories(),
@@ -145,7 +143,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
           const SizedBox(height: 10),
 
-          // 3. DAFTAR TRANSAKSI
+          
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -159,7 +157,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
                 _buildTransactionItem("Gaji Bulanan", "Transfer Gaji PT Jaya", "+Rp 5.000.000", "10:00", Icons.payments, successGreen),
                 _buildTransactionItem("Belanja", "Supermarket Indomaret", "-Rp 150.000", "19:45", Icons.shopping_bag, dangerRed),
 
-                const SizedBox(height: 80), // Padding bawah agar tidak tertutup FAB
+                const SizedBox(height: 80), 
               ],
             ),
           ),
@@ -168,13 +166,13 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     );
   }
 
-  // Widget Helper: Dropdown bergaya Chip
+  
   Widget _buildFilterDropdown({
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    // Memastikan value tetap valid dalam list items
+    
     String safeValue = items.contains(value) ? value : items.first;
 
     return Container(
@@ -201,7 +199,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     );
   }
 
-  // Widget Helper: Header Tanggal
+  
   Widget _buildSectionHeader(String title, String total, {required bool isExpense}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -223,7 +221,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     );
   }
 
-  // Widget Helper: Baris Transaksi
+  
   Widget _buildTransactionItem(String title, String sub, String amount, String time, IconData icon, Color amountColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),

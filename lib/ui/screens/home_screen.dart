@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Icons.more_horiz;
 
       default:
-        return Icons.category_outlined; // fallback aman
+        return Icons.category_outlined; 
     }
   }
 
@@ -70,10 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchDashboard();
   }
 
-  // ================= FETCH SEMUA DATA =================
+  
   Future<void> fetchDashboard() async {
     try {
-      // ===== 1. AMBIL USER =====
+     
       final user = await supabase
           .from('tbl_user')
           .select('id, full_name')
@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final userId = user['id'];
 
-      // ===== 2. AMBIL SEMUA TRANSAKSI (UNTUK TOTAL) =====
+      
       final allTransaksi = await supabase
           .from('tbl_transaction')
           .select('amount, transaction_type')
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // ===== 3. TRANSAKSI 1 BULAN TERAKHIR =====
+      
       final DateTime oneMonthAgo =
           DateTime.now().subtract(const Duration(days: 30));
 
@@ -111,10 +111,9 @@ class _HomeScreenState extends State<HomeScreen> {
             'transaction_date',
             oneMonthAgo.toIso8601String().split('T').first,
           )
-          .order('transaction_date', ascending: false)
-          .limit(5);
+          .order('transaction_date', ascending: false);
 
-      // ===== 4. SET STATE =====
+      
       setState(() {
         full_name = user['full_name'];
         pemasukan = totalIn;
@@ -140,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 
 
-  // ================= UI (TIDAK DIUBAH) =================
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,13 +149,12 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: primaryBlue,
         onPressed: () async {
           print("Tombol diklik!");
-          // Navigasi dilakukan secara independen
+          
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const TambahTransaksi()),
           );
           
-          // Refresh data setelah kembali dari halaman tambah
           fetchDashboard();
         },
         child: const Icon(Icons.add, color: Colors.white),
@@ -165,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
       body: CustomScrollView(
         slivers: [
 
-          // ===== HEADER =====
           SliverAppBar(
             pinned: true,
             backgroundColor: scaffoldBg,
@@ -218,13 +215,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ===== CONTENT =====
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
 
-                // ===== SALDO =====
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -248,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        //"Rp ${saldo.toStringAsFixed(0)}",
+                        
                         rupiahFormat.format(saldo),
                         style: const TextStyle(
                           color: Colors.white,
@@ -262,12 +257,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 20),
 
-                // ===== RINGKASAN =====
                 Row(
                   children: [
                     _infoCard(
                       "Pemasukan",
-                      //"Rp ${pemasukan.toStringAsFixed(0)}",
+                      
                       rupiahFormat.format(pemasukan),
 
                       successGreen,
@@ -276,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     _infoCard(
                       "Pengeluaran",
-                      //"Rp ${pengeluaran.toStringAsFixed(0)}",
+                      
                       rupiahFormat.format(pengeluaran),
 
                       dangerRed,
@@ -287,7 +281,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 28),
 
-                // ===== TRANSAKSI TERAKHIR =====
                 const Text(
                   "Transaksi Terakhir",
                   style: TextStyle(
@@ -324,7 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ===== INFO CARD =====
   static Widget _infoCard(
       String title, String value, Color color, IconData icon) {
     return Expanded(
@@ -373,7 +365,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ===== TRANSACTION TILE =====
   Widget _transactionTile(String title, String amount, bool income,
       IconData icon, String date) {
     return Container(

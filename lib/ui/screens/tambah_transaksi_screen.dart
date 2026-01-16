@@ -27,7 +27,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
   final TextEditingController _customCategoryController =
       TextEditingController();
   final TextEditingController _descriptionController =
-      TextEditingController(); // ✅ DESCRIPTION
+      TextEditingController(); 
 
   List<Map<String, dynamic>> _kategoriPengeluaran = [];
   List<Map<String, dynamic>> _kategoriPemasukan = [];
@@ -46,7 +46,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     super.dispose();
   }
 
-  // ================= FETCH KATEGORI =================
   Future<void> fetchKategori() async {
     try {
       final data = await supabase
@@ -83,7 +82,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     }
   }
 
-  // ================= DATE PICKER =================
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -133,7 +131,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ===== TOGGLE =====
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -166,7 +163,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                 const SizedBox(height: 25),
 
-                // ===== KATEGORI =====
                 const Text(
                   'Pilih Kategori',
                   style: TextStyle(
@@ -207,7 +203,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                 const SizedBox(height: 25),
 
-                // ===== JUMLAH =====
                 const Text('Jumlah', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 4),
                 TextField(
@@ -245,7 +240,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                 const SizedBox(height: 25),
 
-                // ===== TANGGAL =====
                 const Text('Tanggal', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 4),
                 InkWell(
@@ -272,7 +266,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                 const SizedBox(height: 25),
 
-                // ===== DESCRIPTION =====
                 const Text('Deskripsi', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 4),
                 TextField(
@@ -295,7 +288,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
             ),
           ),
 
-          // ===== TOMBOL SIMPAN =====
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -317,7 +309,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                 child: ElevatedButton(
                   onPressed: () async {
                     try {
-                      // 1. Ambil user (sementara 1 user)
+                     
                       final user = await supabase
                           .from('tbl_user')
                           .select('id')
@@ -325,7 +317,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                       final userId = user['id'];
 
-                      // 2. Ambil category_id berdasarkan nama kategori
                       final category = await supabase
                       .from('tbl_category')
                       .select('id')
@@ -339,7 +330,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
                       final categoryId = category['id'];
 
-                      // 3. Bersihkan jumlah (hapus titik)
                       final cleanAmount =
                           _jumlahController.text.replaceAll('.', '');
 
@@ -351,7 +341,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                         return;
                       }
 
-                      // 4. INSERT ke tbl_transaction
                       await supabase.from('tbl_transaction').insert({
                         'user_id': userId,
                         'category_id': categoryId,
@@ -453,7 +442,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
   }
 }
 
-// ================= ICON MAPPING =================
 IconData getCategoryIcon(String? iconName) {
   switch (iconName) {
     case 'restaurant':
@@ -480,7 +468,6 @@ IconData getCategoryIcon(String? iconName) {
   }
 }
 
-// ================= FORMAT RUPIAH =================
 class CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

@@ -12,7 +12,7 @@ class LaporanScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: scaffoldBg,
-      // ===== APP BAR =====
+      
       appBar: AppBar(
         backgroundColor: scaffoldBg,
         elevation: 0,
@@ -36,7 +36,7 @@ class LaporanScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. TIME FILTER TABS
+           
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -53,7 +53,7 @@ class LaporanScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // 2. TOTAL EXPENDITURE TEXT
+            
             const Text(
               "TOTAL PENGELUARAN",
               style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1.2),
@@ -65,7 +65,7 @@ class LaporanScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
-            // 3. DOUGHNUT CHART WITH CENTER TEXT
+            
             SizedBox(
               height: 220,
               width: 220,
@@ -89,7 +89,7 @@ class LaporanScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
-            // 4. BREAKDOWN CATEGORY HEADER
+            
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -99,7 +99,7 @@ class LaporanScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 5. LIST CATEGORIES
+            
             _buildCategoryRow("Makanan & Minuman", "45% dari total", "Rp 2.475.000", "+12%", Icons.restaurant, Colors.blue, true),
             _buildCategoryRow("Transportasi", "20% dari total", "Rp 1.100.000", "-4%", Icons.directions_car, Colors.teal, false),
             _buildCategoryRow("Hiburan", "15% dari total", "Rp 825.000", "Tetap", Icons.movie, Colors.orange, null),
@@ -107,7 +107,7 @@ class LaporanScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // 6. BUDGET INFO CARD
+           
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -130,7 +130,7 @@ class LaporanScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // 7. DOWNLOAD BUTTON
+            
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -139,8 +139,8 @@ class LaporanScreen extends StatelessWidget {
                 icon: const Icon(Icons.file_download_outlined),
                 label: const Text("Unduh Laporan PDF", style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,       // Mengubah background menjadi merah
-                  foregroundColor: Colors.white,     // Mengubah warna teks & ikon menjadi putih
+                  backgroundColor: Colors.red,       
+                  foregroundColor: Colors.white,     
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -221,7 +221,6 @@ class LaporanScreen extends StatelessWidget {
   }
 }
 
-// ===== CUSTOM PAINTER FOR DOUGHNUT CHART =====
 class DoughnutChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -233,7 +232,7 @@ class DoughnutChartPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    // Data Segments (Start Angle, Sweep Angle, Color)
+   
     _drawArc(canvas, center, radius, -pi / 2, pi * 0.9, Colors.blue, paint);
     _drawArc(canvas, center, radius, pi * 0.4, pi * 0.4, Colors.teal, paint);
     _drawArc(canvas, center, radius, pi * 0.8, pi * 0.3, Colors.orange, paint);

@@ -6,7 +6,8 @@ import 'package:management_uang/ui/screens/laporan_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final int initialIndex;
-  const MainScreen({super.key, this.initialIndex = 0});
+  final String username;
+  const MainScreen({super.key, this.initialIndex = 0, required this.username,});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -21,11 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     _selectedIndex = widget.initialIndex;
   }
 
-  static final List<Widget> _screens = [
-    const HomeScreen(),    
-    const TransaksiScreen(), 
-    const LaporanScreen(), 
-  ];
+  // JANGAN gunakan static final di sini karena tidak bisa akses "widget"
 
   void _onItemTapped(int index) {
     setState(() {
@@ -35,33 +32,26 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Deklarasikan list di dalam build
+    final List<Widget> screens = [
+      HomeScreen(username: widget.username), // Sekarang "widget" bisa diakses
+      const TransaksiScreen(),
+      const LaporanScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens,
+        children: screens, // Gunakan variabel screens dari sini
       ),
-
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F172A),
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
+        // ... (sisanya tetap sama)
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Transaksi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Laporan',
-          ),
-          
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Transaksi'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Laporan'),
         ],
       ),
     );

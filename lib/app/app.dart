@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:management_uang/ui/provider/product_provider.dart';
-import 'package:management_uang/ui/screens/main_screen.dart';
+//import 'package:management_uang/ui/screens/main_screen.dart';
+import 'package:management_uang/ui/screens/login.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -17,7 +18,7 @@ class App extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: const MainScreen(),
+        home: const LoginScreen(),
       ),
     );
   }

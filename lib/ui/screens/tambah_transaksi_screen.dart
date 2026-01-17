@@ -4,11 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TambahTransaksi extends StatefulWidget {
-  const TambahTransaksi({super.key});
+  final String username;
+
+  const TambahTransaksi({
+    super.key,
+    required this.username,
+  });
 
   @override
   State<TambahTransaksi> createState() => _TambahTransaksiState();
 }
+
 
 class _TambahTransaksiState extends State<TambahTransaksi> {
   final SupabaseClient supabase = Supabase.instance.client;
@@ -313,6 +319,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                       final user = await supabase
                           .from('tbl_user')
                           .select('id')
+                          .eq('username', widget.username)
                           .single();
 
                       final userId = user['id'];

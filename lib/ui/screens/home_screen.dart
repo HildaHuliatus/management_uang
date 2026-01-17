@@ -143,7 +143,11 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const TambahTransaksi()),
+            MaterialPageRoute(
+              builder: (context) => TambahTransaksi(
+                username: widget.username,
+              ),
+            ),
           );
           fetchDashboard();
         },

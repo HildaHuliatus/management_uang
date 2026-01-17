@@ -35,7 +35,7 @@ class _MainScreenState extends State<MainScreen> {
     // Deklarasikan list di dalam build
     final List<Widget> screens = [
       HomeScreen(username: widget.username), // Sekarang "widget" bisa diakses
-      const TransaksiScreen(),
+      TransaksiScreen(username: widget.username),
       const LaporanScreen(),
     ];
 

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'tambah_transaksi_screen.dart'; // Pastikan file ini ada di project Anda
 
 class TransaksiScreen extends StatefulWidget {
-  const TransaksiScreen({super.key});
+  final String username;
+  const TransaksiScreen({super.key, required this.username});
 
   @override
   State<TransaksiScreen> createState() => _TransaksiScreenState();
@@ -84,8 +85,11 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const TambahTransaksi()),
-          );
+            MaterialPageRoute(
+              builder: (context) => TambahTransaksi(
+                username: widget.username,
+              ),
+            ),          );
         },
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'tambah_transaksi_screen.dart'; // Pastikan file ini ada di project Anda
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'tambah_transaksi_screen.dart';
 
 class TransaksiScreen extends StatefulWidget {
   final String username;
@@ -10,99 +11,169 @@ class TransaksiScreen extends StatefulWidget {
 }
 
 class _TransaksiScreenState extends State<TransaksiScreen> {
-  
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  // WARNA
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
   final Color primaryBlue = const Color(0xFF3B82F6);
   final Color successGreen = const Color(0xFF10B981);
   final Color dangerRed = const Color(0xFFEF4444);
 
- 
+  // FILTER
   String _selectedType = 'Semua';
   String _selectedCategory = 'Semua Kategori';
+  String _search = '';
 
   final List<String> _types = ['Semua', 'Pengeluaran', 'Pemasukan'];
 
-  final List<Map<String, dynamic>> _kategoriPengeluaran = [
-    {'nama': 'Makanan', 'icon': Icons.restaurant},
-    {'nama': 'Transport', 'icon': Icons.directions_car},
-    {'nama': 'Belanja', 'icon': Icons.shopping_bag},
-    {'nama': 'Kesehatan', 'icon': Icons.medical_services},
-    {'nama': 'Tagihan', 'icon': Icons.receipt_long},
-    {'nama': 'Lainnya', 'icon': Icons.more_horiz},
-  ];
+  bool isLoading = true;
 
-  final List<Map<String, dynamic>> _kategoriPemasukan = [
-    {'nama': 'Gaji', 'icon': Icons.payments},
-    {'nama': 'Bonus', 'icon': Icons.card_giftcard},
-    {'nama': 'Investasi', 'icon': Icons.trending_up},
-    {'nama': 'Hadiah', 'icon': Icons.redeem},
-    {'nama': 'Tabungan', 'icon': Icons.account_balance_wallet},
-    {'nama': 'Lainnya', 'icon': Icons.more_horiz},
-  ];
+  // DATA
+  List<Map<String, dynamic>> transaksi = [];
+  List<Map<String, dynamic>> kategoriList = [];
 
-  List<String> _getDropdownCategories() {
-    List<String> list = ['Semua Kategori'];
-    if (_selectedType == 'Pengeluaran') {
-      list.addAll(_kategoriPengeluaran.map((e) => e['nama'] as String));
-    } else if (_selectedType == 'Pemasukan') {
-      list.addAll(_kategoriPemasukan.map((e) => e['nama'] as String));
-    } else {
-      
-      var allNames = {
-        ..._kategoriPengeluaran.map((e) => e['nama'] as String),
-        ..._kategoriPemasukan.map((e) => e['nama'] as String)
-      };
-      list.addAll(allNames);
+  @override
+  void initState() {
+    super.initState();
+    fetchKategori();
+    fetchTransaksi();
+  }
+
+  // ============================
+  // FETCH SEMUA KATEGORI
+  // ============================
+  Future<void> fetchKategori() async {
+    try {
+      final data = await supabase
+          .from('tbl_category')
+          .select('name, type');
+
+      setState(() {
+        kategoriList = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      debugPrint('ERROR KATEGORI: $e');
     }
-    return list;
+  }
+
+  // ============================
+  // FETCH TRANSAKSI USER
+  // ============================
+  Future<void> fetchTransaksi() async {
+    setState(() => isLoading = true); // Pastikan loading muncul saat refresh
+    try {
+      final user = await supabase
+          .from('tbl_user')
+          .select('id')
+          .eq('username', widget.username)
+          .single();
+
+      final data = await supabase
+          .from('tbl_transaction')
+          .select('''
+            amount,
+            description,
+            transaction_type,
+            transaction_date,
+            tbl_category(name, icon)
+          ''')
+          .eq('user_id', user['id'])
+          .order('transaction_date', ascending: false);
+
+      setState(() {
+        transaksi = List<Map<String, dynamic>>.from(data);
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('ERROR TRANSAKSI: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ============================
+  // DROPDOWN KATEGORI SESUAI TYPE
+  // ============================
+  List<String> _getDropdownCategories() {
+    final filtered = kategoriList.where((k) {
+      if (_selectedType == 'Pengeluaran') return k['type'] == 'expense';
+      if (_selectedType == 'Pemasukan') return k['type'] == 'income';
+      return true;
+    });
+
+    return [
+      'Semua Kategori',
+      ...filtered.map((e) => e['name'] as String),
+    ];
+  }
+
+  // ============================
+  // FILTER + SEARCH
+  // ============================
+  List<Map<String, dynamic>> get filteredTransaksi {
+    return transaksi.where((trx) {
+      final type = trx['transaction_type'];
+      final category = trx['tbl_category']['name'].toString().toLowerCase();
+      final desc = (trx['description'] ?? '').toString().toLowerCase();
+      final amount = trx['amount'].toString().toLowerCase();
+
+      if (_selectedType == 'Pengeluaran' && type != 'expense') return false;
+      if (_selectedType == 'Pemasukan' && type != 'income') return false;
+
+      if (_selectedCategory != 'Semua Kategori' &&
+          _selectedCategory != trx['tbl_category']['name']) {
+        return false;
+      }
+
+      if (_search.isNotEmpty &&
+          !category.contains(_search) &&
+          !desc.contains(_search) &&
+          !amount.contains(_search)) {
+        return false;
+      }
+
+      return true;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: scaffoldBg,
-      
-     
       appBar: AppBar(
         backgroundColor: scaffoldBg,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           "Daftar Transaksi",
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        
       ),
 
-      
       floatingActionButton: FloatingActionButton(
         backgroundColor: primaryBlue,
-        onPressed: () {
-          Navigator.push(
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => TambahTransaksi(
-                username: widget.username,
-              ),
-            ),          );
+              builder: (_) => TambahTransaksi(username: widget.username),
+            ),
+          );
+          fetchTransaksi(); // Memanggil ulang data setelah kembali
         },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
 
       body: Column(
         children: [
-          
+          // SEARCH
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(16),
             child: TextField(
               style: const TextStyle(color: Colors.white),
+              onChanged: (val) => setState(() => _search = val.toLowerCase()),
               decoration: InputDecoration(
-                hintText: "Cari transaksi...",
+                hintText: 'Cari transaksi...',
                 hintStyle: const TextStyle(color: Colors.white38),
                 prefixIcon: const Icon(Icons.search, color: Colors.white38),
                 filled: true,
@@ -115,31 +186,31 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
             ),
           ),
 
-          
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          // FILTER FULL WIDTH
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-              
-                _buildFilterDropdown(
-                  value: _selectedType,
-                  items: _types,
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedType = val!;
-                      _selectedCategory = 'Semua Kategori'; // Reset kategori saat tipe berubah
-                    });
-                  },
+                Expanded(
+                  child: _buildFilterDropdown(
+                    value: _selectedType,
+                    items: _types,
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedType = val!;
+                        _selectedCategory = 'Semua Kategori';
+                      });
+                    },
+                  ),
                 ),
                 const SizedBox(width: 10),
-                
-                _buildFilterDropdown(
-                  value: _selectedCategory,
-                  items: _getDropdownCategories(),
-                  onChanged: (val) {
-                    setState(() => _selectedCategory = val!);
-                  },
+                Expanded(
+                  child: _buildFilterDropdown(
+                    value: _selectedCategory,
+                    items: _getDropdownCategories(),
+                    onChanged: (val) =>
+                        setState(() => _selectedCategory = val!),
+                  ),
                 ),
               ],
             ),
@@ -147,86 +218,88 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
           const SizedBox(height: 10),
 
-          
+          // LIST
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildSectionHeader("Hari Ini", "-Rp 145.000", isExpense: true),
-                _buildTransactionItem("Makan Siang", "Makan di McD Sarinah", "-Rp 85.000", "12:30", Icons.restaurant, dangerRed),
-                _buildTransactionItem("Transportasi", "Grab Car ke Kantor", "-Rp 60.000", "08:15", Icons.directions_car, dangerRed),
-                
-                const SizedBox(height: 24),
-                _buildSectionHeader("Kemarin", "+Rp 4.850.000", isExpense: false),
-                _buildTransactionItem("Gaji Bulanan", "Transfer Gaji PT Jaya", "+Rp 5.000.000", "10:00", Icons.payments, successGreen),
-                _buildTransactionItem("Belanja", "Supermarket Indomaret", "-Rp 150.000", "19:45", Icons.shopping_bag, dangerRed),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredTransaksi.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Data tidak ada',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: filteredTransaksi.map((trx) {
+                          final cat = trx['tbl_category'];
+                          final iconData =
+                              getCategoryIcon(cat['icon'] as String?);
+                          final income =
+                              trx['transaction_type'] == 'income';
 
-                const SizedBox(height: 80), 
-              ],
-            ),
+                          return _buildTransactionItem(
+                            cat['name'],
+                            trx['description'] ?? '',
+                            '${income ? '+' : '-'}Rp ${trx['amount']}',
+                            trx['transaction_date'],
+                            iconData.icon,
+                            income ? successGreen : dangerRed,
+                            iconData.color,
+                          );
+                        }).toList(),
+                      ),
           ),
         ],
       ),
     );
   }
 
-  
+  // ============================
+  // UI COMPONENT
+  // ============================
   Widget _buildFilterDropdown({
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    
-    String safeValue = items.contains(value) ? value : items.first;
+    final safeValue = items.contains(value) ? value : items.first;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: safeValue.contains('Semua') ? cardColor : primaryBlue,
         borderRadius: BorderRadius.circular(20),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
+          isExpanded: true,
           value: safeValue,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
           dropdownColor: cardColor,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+          icon: const Icon(Icons.keyboard_arrow_down,
+              color: Colors.white70),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold),
           onChanged: onChanged,
-          items: items.map<DropdownMenuItem<String>>((String val) {
-            return DropdownMenuItem<String>(
-              value: val,
-              child: Text(val),
-            );
-          }).toList(),
+          items: items
+              .map((val) =>
+                  DropdownMenuItem(value: val, child: Text(val)))
+              .toList(),
         ),
       ),
     );
   }
 
-  
-  Widget _buildSectionHeader(String title, String total, {required bool isExpense}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-          Text(
-            "TOTAL: $total",
-            style: TextStyle(
-              // ignore: deprecated_member_use
-              color: isExpense ? Colors.white38 : successGreen.withOpacity(0.8),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  
-  Widget _buildTransactionItem(String title, String sub, String amount, String time, IconData icon, Color amountColor) {
+  Widget _buildTransactionItem(
+    String title,
+    String sub,
+    String amount,
+    String time,
+    IconData icon,
+    Color amountColor,
+    Color iconColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -235,32 +308,78 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               // ignore: deprecated_member_use
-              color: const Color(0xFF0F172A).withOpacity(0.5),
+              color: iconColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: primaryBlue, size: 24),
+            child: Icon(icon, color: iconColor),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 2),
-                Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 13)),
+                Text(sub,
+                    style: const TextStyle(
+                        color: Colors.white38, fontSize: 13)),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(amount, style: TextStyle(color: amountColor, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(amount,
+                  style: TextStyle(
+                      color: amountColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 2),
-              Text(time, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+              Text(time,
+                  style: const TextStyle(
+                      color: Colors.white38, fontSize: 12)),
             ],
           ),
         ],
       ),
     );
+  }
+}
+
+// ============================
+// ICON + WARNA KATEGORI
+// ============================
+class CategoryIcon {
+  final IconData icon;
+  final Color color;
+  CategoryIcon(this.icon, this.color);
+}
+
+CategoryIcon getCategoryIcon(String? iconName) {
+  switch (iconName) {
+    case 'restaurant':
+      return CategoryIcon(Icons.restaurant, Colors.orange);
+    case 'wifi':
+      return CategoryIcon(Icons.wifi, Colors.blue);
+    case 'movie':
+      return CategoryIcon(Icons.movie, Colors.purple);
+    case 'shopping_bag':
+      return CategoryIcon(Icons.shopping_bag, Colors.pink);
+    case 'attach_money':
+      return CategoryIcon(Icons.attach_money, Colors.green);
+    case 'bolt':
+      return CategoryIcon(Icons.bolt, Colors.yellow);
+    case 'directions_car':
+      return CategoryIcon(Icons.directions_car, Colors.red);
+    case 'account_balance_wallet':
+      return CategoryIcon(Icons.account_balance_wallet, Colors.teal);
+    case 'lainnya':
+      return CategoryIcon(Icons.more_horiz, Colors.grey);
+    default:
+      return CategoryIcon(Icons.category_outlined, Colors.grey);
   }
 }

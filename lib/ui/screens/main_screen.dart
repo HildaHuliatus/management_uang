@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:management_uang/ui/screens/home_screen.dart';
-// Import halaman transaksi yang baru dibuat atau yang sudah ada
 import 'package:management_uang/ui/screens/transaksi_screen.dart'; 
 import 'package:management_uang/ui/screens/laporan_screen.dart'; 
 
@@ -22,8 +21,6 @@ class _MainScreenState extends State<MainScreen> {
     _selectedIndex = widget.initialIndex;
   }
 
-  // JANGAN gunakan static final di sini karena tidak bisa akses "widget"
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -32,9 +29,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Deklarasikan list di dalam build
     final List<Widget> screens = [
-      HomeScreen(username: widget.username), // Sekarang "widget" bisa diakses
+      HomeScreen(username: widget.username), 
       TransaksiScreen(username: widget.username),
       const LaporanScreen(),
     ];
@@ -42,12 +38,11 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: screens, // Gunakan variabel screens dari sini
+        children: screens, 
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        // ... (sisanya tetap sama)
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
           BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Transaksi'),

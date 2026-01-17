@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'tambah_transaksi_screen.dart';
-import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -14,6 +14,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
 
+  // ================= ICON =================
   IconData getCategoryIcon(String? iconName) {
     switch (iconName) {
       case 'restaurant':
@@ -39,7 +40,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String full_name = "Loading...";
+  Color getCategoryColor(String? iconName) {
+    switch (iconName) {
+      case 'restaurant':
+        return Colors.orange;
+      case 'wifi':
+        return Colors.blue;
+      case 'movie':
+        return Colors.deepPurple;
+      case 'shopping_bag':
+        return Colors.pink;
+      case 'attach_money':
+        return Colors.green;
+      case 'bolt':
+        return Colors.amber;
+      case 'directions_car':
+        return Colors.lightBlue;
+      case 'account_balance_wallet':
+        return Colors.teal;
+      case 'lainnya':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // ================= STATE =================
+  String fullName = 'Loading...';
   bool isLoading = true;
 
   double saldo = 0;
@@ -48,13 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Map<String, dynamic>> transaksiTerakhir = [];
 
+  // ================= UI COLOR =================
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
   final Color primaryBlue = const Color(0xFF3B82F6);
   final Color successGreen = const Color(0xFF10B981);
   final Color dangerRed = const Color(0xFFEF4444);
 
-  final NumberFormat rupiahFormat = NumberFormat.currency(
+  final NumberFormat rupiah = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
     decimalDigits: 2,
@@ -66,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchDashboard();
   }
 
+  // ================= FETCH =================
   Future<void> fetchDashboard() async {
     try {
       final user = await supabase
@@ -76,7 +105,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final userId = user['id'];
 
-      final allTransaksi = await supabase
+      // Hitung tanggal 1 bulan yang lalu (30 hari)
+      final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
+      final formattedDate = DateFormat('yyyy-MM-dd').format(oneMonthAgo);
+
+      final transaksi = await supabase
           .from('tbl_transaction')
           .select('amount, transaction_type')
           .eq('user_id', userId);
@@ -84,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       double totalIn = 0;
       double totalOut = 0;
 
-      for (var t in allTransaksi) {
+      for (var t in transaksi) {
         if (t['transaction_type'] == 'income') {
           totalIn += (t['amount'] as num).toDouble();
         } else {
@@ -92,48 +125,29 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      final DateTime oneMonthAgo =
-          DateTime.now().subtract(const Duration(days: 30));
-
-      final lastTransaksiRaw = await supabase
+      final last = await supabase
           .from('tbl_transaction')
           .select(
               'amount, transaction_type, transaction_date, tbl_category(name, icon)')
           .eq('user_id', userId)
-          .gte('transaction_date', oneMonthAgo.toIso8601String().split('T').first)
+          .gte('transaction_date', formattedDate) // Filter 1 bulan terakhir
           .order('transaction_date', ascending: false);
 
-      // AMAN: pastikan tbl_category selalu ada
-      final lastTransaksi = List<Map<String, dynamic>>.from(
-        lastTransaksiRaw.map((trx) {
-          final category = trx['tbl_category'] ?? {};
-          return {
-            ...trx,
-            'tbl_category': {
-              'name': category['name'] ?? 'Lainnya',
-              'icon': category['icon'] ?? 'lainnya',
-            }
-          };
-        }),
-      );
-
       setState(() {
-        full_name = user['full_name'];
+        fullName = user['full_name'];
         pemasukan = totalIn;
         pengeluaran = totalOut;
         saldo = totalIn - totalOut;
-        transaksiTerakhir = lastTransaksi;
+        transaksiTerakhir = List<Map<String, dynamic>>.from(last);
         isLoading = false;
       });
     } catch (e) {
-      debugPrint("ERROR DASHBOARD: $e");
-      setState(() {
-        full_name = "Gagal ambil user";
-        isLoading = false;
-      });
+      debugPrint('ERROR DASHBOARD: $e');
+      setState(() => isLoading = false);
     }
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,9 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => TambahTransaksi(
-                username: widget.username,
-              ),
+              builder: (_) => TambahTransaksi(username: widget.username),
             ),
           );
           fetchDashboard();
@@ -161,101 +173,67 @@ class _HomeScreenState extends State<HomeScreen> {
             elevation: 0,
             toolbarHeight: 80,
             title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const CircleAvatar(
+                  radius: 22,
+                  backgroundImage: AssetImage('assets/images/profile.jpg'),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      radius: 22,
-                      backgroundColor: Colors.blueGrey,
-                      backgroundImage: AssetImage('assets/images/profile.jpg'),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Selamat Datang,",
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        Text(
-                          isLoading ? "Loading..." : full_name,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    const Text('Selamat Datang',
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      isLoading ? 'Loading...' : fullName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.settings, color: Colors.white),
-                  onPressed: () {},
                 ),
               ],
             ),
           ),
+
+          // ================= CONTENT =================
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Total Saldo
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(
-                        colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)]),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Total Saldo",
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      Text(
-                        rupiahFormat.format(saldo),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
+                _saldoCard(),
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    _infoCard(
-                        "Pemasukan", rupiahFormat.format(pemasukan), successGreen,
-                        Icons.arrow_downward),
+                    _infoCard('Pemasukan', rupiah.format(pemasukan),
+                        successGreen, Icons.arrow_downward),
                     const SizedBox(width: 12),
-                    _infoCard("Pengeluaran", rupiahFormat.format(pengeluaran),
+                    _infoCard('Pengeluaran', rupiah.format(pengeluaran),
                         dangerRed, Icons.arrow_upward),
                   ],
                 ),
                 const SizedBox(height: 28),
-                const Text("Transaksi Terakhir",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
+                const Text('Transaksi Terakhir',
+                    style:
+                        TextStyle(color: Colors.white, fontSize: 18)),
                 const SizedBox(height: 12),
+
                 ...transaksiTerakhir.map((trx) {
-                  final income = trx['transaction_type'] == 'income';
-                  final category = trx['tbl_category'];
+                  final category = trx['tbl_category'] ?? {};
                   final iconName = category['icon'];
+                  final income = trx['transaction_type'] == 'income';
 
                   return _transactionTile(
-                    category['name'],
-                    rupiahFormat.format(trx['amount']),
+                    category['name'] ?? 'Lainnya',
+                    rupiah.format(trx['amount']),
                     income,
                     getCategoryIcon(iconName),
+                    getCategoryColor(iconName),
                     trx['transaction_date'].toString(),
                   );
                 }),
-                const SizedBox(height: 12),
               ]),
             ),
           ),
@@ -264,13 +242,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  static Widget _infoCard(
+  // ================= WIDGET =================
+  Widget _saldoCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+            colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)]),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Total Saldo',
+              style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 8),
+          Text(
+            rupiah.format(saldo),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoCard(
       String title, String value, Color color, IconData icon) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -278,25 +283,19 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 16),
-                ),
+                Icon(icon, color: color, size: 16),
                 const SizedBox(width: 8),
                 Text(title,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                  color: color, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            Text(value,
+                style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -304,7 +303,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _transactionTile(
-      String title, String amount, bool income, IconData icon, String date) {
+    String title,
+    String amount,
+    bool income,
+    IconData icon,
+    Color iconColor,
+    String date,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -317,10 +322,11 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: scaffoldBg.withOpacity(0.5),
+              // ignore: deprecated_member_use
+              color: iconColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: Colors.white),
+            child: Icon(icon, color: iconColor),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -330,20 +336,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(title,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(date,
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12)),
               ],
             ),
           ),
-          Text(income ? "+$amount" : "-$amount",
-              style: TextStyle(
-                  color: income ? successGreen : Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            income ? '+$amount' : '-$amount',
+            style: TextStyle(
+                color: income ? successGreen : dangerRed,
+                fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );

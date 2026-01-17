@@ -17,7 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool isLoading = false;
 
-  // ================= LOGIN VIA tbl_user =================
   Future<void> handleLogin() async {
   final username = usernameController.text.trim();
   final email = emailController.text.trim();
@@ -27,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   setState(() => isLoading = true);
 
   try {
-  print("--- Memulai Login ---");
+  //print("--- Memulai Login ---");
 
   final user = await supabase
       .from('tbl_user')
@@ -35,30 +34,32 @@ class _LoginScreenState extends State<LoginScreen> {
       .eq('username', username)
       .maybeSingle();
 
-  print("Hasil Query User: $user");
+  //print("Hasil Query User: $user");
 
   if (user == null) {
-    print("User null, melakukan insert...");
-    final inserted = await supabase.from('tbl_user').insert({
+    //print("User null, melakukan insert...");
+    await supabase.from('tbl_user').insert({
       'username': username,
       'full_name': username,
       'email': email,
     }).select();
 
-    print("Insert Berhasil: $inserted");
+    //print("Insert Berhasil: $inserted");
   }
 
-  print("Navigasi ke MainScreen...");
+  //print("Navigasi ke MainScreen...");
   Navigator.pushReplacement(
+    // ignore: use_build_context_synchronously
     context,
     MaterialPageRoute(
       builder: (_) => MainScreen(username: username),
     ),
   );
 
-} catch (e, st) {
-  print("LOGIN ERROR: $e");
-  print(st);
+} catch (e) {
+  //print("LOGIN ERROR: $e");
+  //print(st);
+  // ignore: use_build_context_synchronously
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text("Terjadi kesalahan login: $e")),
   );
@@ -66,7 +67,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
 }
 
-  // ================= UI (TIDAK DIUBAH) =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -114,7 +114,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 32),
 
-              // Username
               TextField(
                 controller: usernameController,
                 decoration: InputDecoration(
@@ -128,7 +127,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Email
               TextField(
                 controller: emailController,
                 decoration: InputDecoration(

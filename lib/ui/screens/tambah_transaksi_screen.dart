@@ -15,7 +15,6 @@ class TambahTransaksi extends StatefulWidget {
   State<TambahTransaksi> createState() => _TambahTransaksiState();
 }
 
-
 class _TambahTransaksiState extends State<TambahTransaksi> {
   final SupabaseClient supabase = Supabase.instance.client;
 
@@ -48,7 +47,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
   void dispose() {
     _jumlahController.dispose();
     _customCategoryController.dispose();
-    _descriptionController.dispose(); // ✅
+    _descriptionController.dispose(); 
     super.dispose();
   }
 
@@ -154,7 +153,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                           }
                         });
                       }),
-                      _buildToggleItem('Pemasukann', !_isPengeluaran, () {
+                      _buildToggleItem('Pemasukan', !_isPengeluaran, () {
                         setState(() {
                           _isPengeluaran = false;
                           if (_kategoriPemasukan.isNotEmpty) {
@@ -315,7 +314,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                 child: ElevatedButton(
                   onPressed: () async {
                     try {
-                     
                       final user = await supabase
                           .from('tbl_user')
                           .select('id')
@@ -375,7 +373,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                     }
                   },
 
-
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
                     shape: RoundedRectangleBorder(
@@ -425,6 +422,21 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
   Widget _buildCategoryItem(IconData icon, String label,
       {bool isSelected = false}) {
+    
+    // Logika penentuan warna ikon berdasarkan jenisnya
+    Color getIconColor(IconData icon) {
+      if (icon == Icons.restaurant) return Colors.orange;
+      if (icon == Icons.wifi) return Colors.blue;
+      if (icon == Icons.movie) return Colors.purple;
+      if (icon == Icons.shopping_bag) return Colors.pink;
+      if (icon == Icons.attach_money) return Colors.green;
+      if (icon == Icons.bolt) return Colors.yellow;
+      if (icon == Icons.directions_car) return Colors.cyan;
+      if (icon == Icons.account_balance_wallet) return Colors.teal;
+      if (icon == Icons.more_horiz) return Colors.blueGrey;
+      return Colors.white;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
@@ -436,8 +448,11 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon,
-              color: isSelected ? primaryBlue : Colors.white, size: 28),
+          Icon(
+            icon, 
+            color: isSelected ? Colors.white : getIconColor(icon), // Pakai warna jika tidak dipilih
+            size: 28
+          ),
           const SizedBox(height: 8),
           Text(label,
               style: TextStyle(
@@ -468,8 +483,7 @@ IconData getCategoryIcon(String? iconName) {
     case 'account_balance_wallet':
       return Icons.account_balance_wallet;
     case 'lainnya':
-      return Icons.more_horiz
-;
+      return Icons.more_horiz;
     default:
       return Icons.category;
   }
@@ -479,7 +493,7 @@ class CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
-    if (newValue.selection.baseOffset == 0) return newValue;
+    if (newValue.text.isEmpty) return newValue;
 
     final value = double.parse(newValue.text);
     final formatter = NumberFormat.decimalPattern('id');

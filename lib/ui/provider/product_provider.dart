@@ -1,119 +1,53 @@
 import 'package:flutter/material.dart';
-// ignore: depend_on_referenced_packages
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProductProvider extends ChangeNotifier {
-  final supabase = Supabase.instance.client;
+class TransactionProvider extends ChangeNotifier {
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
+  List<Map<String, dynamic>> _allTransactions = [];
+  bool _isLoading = false;
 
-  List<Map<String, dynamic>> _minuman = [];
-  List<Map<String, dynamic>> _makanan = [];
-  List<Map<String, dynamic>> _dessert = [];
+  List<Map<String, dynamic>> get allTransactions => _allTransactions;
+  bool get isLoading => _isLoading;
 
-  bool isLoading = false;
-
-  // =====================
-  // FETCH DATA SUPABASE
-  // =====================
-  Future<void> fetchProducts() async {
-    isLoading = true;
-    notifyListeners();
-
-    final response = await supabase.from('products').select();
-
-    _minuman = response
-        .where((p) => p['category'] == 'minuman')
-        .map(_mapProduct)
-        .toList();
-
-    _makanan = response
-        .where((p) => p['category'] == 'makanan')
-        .map(_mapProduct)
-        .toList();
-
-    _dessert = response
-        .where((p) => p['category'] == 'dessert')
-        .map(_mapProduct)
-        .toList();
-
-    isLoading = false;
-    notifyListeners();
-  }
-
-  // Tambahkan quantity default
-  Map<String, dynamic> _mapProduct(dynamic p) {
-    return {
-      "id": p["id"],
-      "image": p["image"],
-      "name": p["name"],
-      "price": "Rp. ${p["price"]}",
-      "deskripsi": p["deskripsi"],
-      "quantity": 0,
-      "category": p["category"],
-    };
-  }
-
-  // =====================
-  // GETTER
-  // =====================
-  List<Map<String, dynamic>> get minuman => _minuman;
-  List<Map<String, dynamic>> get makanan => _makanan;
-  List<Map<String, dynamic>> get dessert => _dessert;
-
-  // =====================
-  // QUANTITY (TIDAK BERUBAH)
-  // =====================
-  void increment(int index) {
-    _minuman[index]["quantity"]++;
-    notifyListeners();
-  }
-
-  void decrement(int index) {
-    if (_minuman[index]["quantity"] > 0) {
-      _minuman[index]["quantity"]--;
-      notifyListeners();
+  // Hitung Saldo Otomatis
+  double get totalSaldo {
+    double incoming = 0;
+    double outgoing = 0;
+    for (var t in _allTransactions) {
+      if (t['transaction_type'] == 'income') {
+        incoming += (t['amount'] as num).toDouble();
+      } else {
+        outgoing += (t['amount'] as num).toDouble();
+      }
     }
+    return incoming - outgoing;
   }
 
-  void increment_makanan(int index) {
-    _makanan[index]["quantity"]++;
-    notifyListeners();
-  }
+  // Fungsi utama untuk ambil data dari mana saja
+  Future<void> refreshData(String username) async {
+    _isLoading = true;
+    notifyListeners(); // Beritahu semua halaman untuk tampilkan loading
 
-  void decrement_makanan(int index) {
-    if (_makanan[index]["quantity"] > 0) {
-      _makanan[index]["quantity"]--;
-      notifyListeners();
+    try {
+      final user = await _supabase
+          .from('tbl_user')
+          .select('id')
+          .eq('username', username)
+          .single();
+
+      final data = await _supabase
+          .from('tbl_transaction')
+          .select('amount, transaction_type, transaction_date, description, tbl_category(name, icon)')
+          .eq('user_id', user['id'])
+          .order('transaction_date', ascending: false);
+
+      _allTransactions = List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('Provider Error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners(); // Beritahu semua halaman: "DATA BARU SUDAH DATANG!"
     }
-  }
-
-  void increment_dessert(int index) {
-    _dessert[index]["quantity"]++;
-    notifyListeners();
-  }
-
-  void decrement_dessert(int index) {
-    if (_dessert[index]["quantity"] > 0) {
-      _dessert[index]["quantity"]--;
-      notifyListeners();
-    }
-  }
-
-  // =====================
-  // ORDER
-  // =====================
-  List<Map<String, dynamic>> get orderedMinuman =>
-      _minuman.where((p) => p["quantity"] > 0).toList();
-
-  List<Map<String, dynamic>> get orderedMakanan =>
-      _makanan.where((p) => p["quantity"] > 0).toList();
-
-  List<Map<String, dynamic>> get orderedDessert =>
-      _dessert.where((p) => p["quantity"] > 0).toList();
-
-  void clearOrders() {
-    for (var p in [..._minuman, ..._makanan, ..._dessert]) {
-      p["quantity"] = 0;
-    }
-    notifyListeners();
   }
 }

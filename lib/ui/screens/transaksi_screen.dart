@@ -42,6 +42,177 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
     });
   }
 
+  void _showTransactionDetail(BuildContext context, Map<String, dynamic> trx, String username) {
+    final cat = trx['tbl_category'];
+    final iconInfo = getCategoryIcon(cat['icon']);
+    final isIncome = trx['transaction_type'] == 'income';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle Bar Atas
+              Container(
+                width: 40,
+                height: 4,
+                // Perbaikan di baris ini:
+                margin: const EdgeInsets.only(bottom: 20), 
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Header Detail
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      // ignore: deprecated_member_use
+                      color: iconInfo.color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(iconInfo.icon, color: iconInfo.color, size: 30),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cat['name'],
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          trx['transaction_date'],
+                          style: const TextStyle(color: Colors.white38),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${isIncome ? '+' : '-'} Rp ${trx['amount']}',
+                    style: TextStyle(
+                      color: isIncome ? successGreen : dangerRed,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 20),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 10),
+              
+              // Bagian Deskripsi
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Catatan:", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                    const SizedBox(height: 5),
+                    Text(
+                      trx['description'] ?? '-',
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 30),
+
+              // Tombol Aksi
+              Row(
+                children: [
+                  // Tombol Delete
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: dangerRed),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        debugPrint("DEBUG DETAIL: ID = ${trx['id']} | Tipe = ${trx['id'].runtimeType}");
+                        Navigator.pop(context); // Tutup modal
+                        _confirmDelete(context, trx['id'], username);
+                      },
+                      icon: Icon(Icons.delete_outline, color: dangerRed),
+                      label: Text("Hapus", style: TextStyle(color: dangerRed)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Tombol Update
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context); // Tutup modal
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditTransaksi(
+                              username: username,
+                              existingTrx: trx,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      label: const Text("Edit", style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Cari fungsi ini di TransaksiScreen dan ubah:
+void _confirmDelete(BuildContext context, dynamic id, String username) {
+  debugPrint("DEBUG CONFIRM: ID asli = $id | Tipe asli = ${id.runtimeType}");
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: cardColor,
+      title: const Text("Hapus Transaksi?", style: TextStyle(color: Colors.white)),
+      content: const Text("Data yang dihapus tidak dapat dikembalikan.", style: TextStyle(color: Colors.white70)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Batal", style: TextStyle(color: Colors.white38)),
+        ),
+        TextButton(
+          onPressed: () {
+            // LANGSUNG panggil tanpa int.parse
+            context.read<TransactionProvider>().deleteTransaction(id, username);
+            Navigator.pop(context);
+          },
+          child: Text("Hapus", style: TextStyle(color: dangerRed)),
+        ),
+      ],
+    ),
+  );
+}
   // LOGIKA DROPDOWN KATEGORI
   List<String> _getDropdownCategories(TransactionProvider trxProv) {
     final masterKategori = trxProv.kategoriList;
@@ -201,6 +372,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
                                   return true;
                                 },
                                 onDismissed: (direction) {
+                                  // Langsung kirim id apa adanya
                                   context.read<TransactionProvider>().deleteTransaction(trx['id'], widget.username);
                                 },
                                 background: Container(
@@ -211,15 +383,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
                                 ),
                                 child: InkWell(
                                   onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => EditTransaksi(
-                                          username: widget.username,
-                                          existingTrx: trx,
-                                        ),
-                                      ),
-                                    );
+                                    _showTransactionDetail(context, trx, widget.username);
                                   },
                                   child: _buildTransactionItem(
                                     cat['name'],
@@ -319,6 +483,8 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
       ),
     );
   }
+
+  
 }
 
 // HELPER UNTUK ICON
@@ -341,3 +507,4 @@ CategoryIcon getCategoryIcon(String? iconName) {
     default: return CategoryIcon(Icons.more_horiz, Colors.grey);
   }
 }
+

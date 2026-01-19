@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:management_uang/ui/provider/product_provider.dart';
-import 'package:provider/provider.dart'; // 1. Tambahkan import provider
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditTransaksi extends StatefulWidget {
@@ -24,11 +24,11 @@ class _EditTransaksiState extends State<EditTransaksi> {
 
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
-  final Color primaryBlue = const Color(0xFF1E88E5);
+  final Color primaryBlue = const Color(0xFF3B82F6);
 
   bool _isPengeluaran = true;
   bool _loadingKategori = true;
-  bool _isSaving = false; // Flag untuk loading tombol simpan
+  bool _isSaving = false;
 
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
@@ -42,7 +42,20 @@ class _EditTransaksiState extends State<EditTransaksi> {
   @override
   void initState() {
     super.initState();
+    _initExistingData(); 
     fetchKategori();
+  }
+
+  void _initExistingData() {
+    final trx = widget.existingTrx;
+    
+    _isPengeluaran = trx['transaction_type'] == 'expense';
+    _selectedDate = DateTime.parse(trx['transaction_date']);
+    _descriptionController.text = trx['description'] ?? '';
+    _selectedCategory = trx['tbl_category']['name'];
+    
+    final amount = trx['amount'] is int ? trx['amount'] : (trx['amount'] as double).toInt();
+    _jumlahController.text = NumberFormat.decimalPattern('id').format(amount);
   }
 
   @override
@@ -78,8 +91,13 @@ class _EditTransaksiState extends State<EditTransaksi> {
       setState(() {
         _kategoriPengeluaran = expense;
         _kategoriPemasukan = income;
-        _selectedCategory = expense.isNotEmpty ? expense.first['nama'] : '';
         _loadingKategori = false;
+
+        if (_selectedCategory.isEmpty) {
+          _selectedCategory = _isPengeluaran 
+              ? (expense.isNotEmpty ? expense.first['nama'] : '')
+              : (income.isNotEmpty ? income.first['nama'] : '');
+        }
       });
     } catch (e) {
       debugPrint('ERROR FETCH KATEGORI: $e');
@@ -87,63 +105,57 @@ class _EditTransaksiState extends State<EditTransaksi> {
     }
   }
 
-  // --- LOGIKA SIMPAN TRANSAKSI ---
-  Future<void> _simpanTransaksi() async {
+  Future<void> _updateTransaksi() async {
     final cleanAmount = _jumlahController.text.replaceAll('.', '');
-    if (cleanAmount.isEmpty || cleanAmount == '0') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jumlah tidak boleh kosong')),
-      );
-      return;
-    }
+    if (cleanAmount.isEmpty || cleanAmount == '0') return;
 
     setState(() => _isSaving = true);
 
     try {
-      // 1. Ambil User ID
-      final user = await supabase
-          .from('tbl_user')
-          .select('id')
-          .eq('username', widget.username)
-          .single();
-
-      // 2. Ambil Category ID
       final category = await supabase
           .from('tbl_category')
           .select('id')
           .eq('name', _selectedCategory)
-          .eq('type', _isPengeluaran ? 'expense' : 'income')
+          .limit(1)
           .single();
 
-      // 3. Insert ke Tabel Transaction
-      await supabase.from('tbl_transaction').insert({
-        'user_id': user['id'],
-        'category_id': category['id'],
-        'amount': double.parse(cleanAmount),
-        'description': _descriptionController.text,
-        'transaction_type': _isPengeluaran ? 'expense' : 'income',
-        'transaction_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-      });
+      final String trxId = widget.existingTrx['id'].toString();
+      debugPrint("Mencoba Update ID UUID: $trxId");
 
-      // 4. UPDATE PROVIDER (PENTING!)
-      // Memanggil fetchDashboard agar data di HomeScreen langsung sinkron
-      if (mounted) {
-        await context.read<TransactionProvider>().fetchDashboard(widget.username);
-        
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaksi berhasil disimpan')),
-        );
-        // ignore: use_build_context_synchronously
-        Navigator.pop(context);
+      final response = await supabase
+          .from('tbl_transaction')
+          .update({
+            'category_id': category['id'],
+            'amount': double.parse(cleanAmount),
+            'description': _descriptionController.text,
+            'transaction_type': _isPengeluaran ? 'expense' : 'income',
+            'transaction_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+          })
+          .eq('id', trxId)
+          .select(); 
+
+      // ignore: unnecessary_null_comparison
+      if (response != null && response.isNotEmpty) {
+        debugPrint("Update Berhasil di Supabase!");
+        if (mounted) {
+          await context.read<TransactionProvider>().fetchDashboard(widget.username);
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaksi berhasil diperbarui'))
+          );
+          // ignore: use_build_context_synchronously
+          Navigator.pop(context);
+        }
+      } else {
+        debugPrint("Gagal: Baris tidak ditemukan atau RLS memblokir.");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal: Data tidak berubah (Cek Policy Supabase)'))
+          );
+        }
       }
     } catch (e) {
-      debugPrint('ERROR INSERT: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyimpan transaksi')),
-        );
-      }
+      debugPrint('ERROR UPDATE: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -158,7 +170,7 @@ class _EditTransaksiState extends State<EditTransaksi> {
       appBar: AppBar(
         backgroundColor: scaffoldBg,
         elevation: 0,
-        title: const Text('Tambah Transaksi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Edit Transaksi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -171,7 +183,7 @@ class _EditTransaksiState extends State<EditTransaksi> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Toggle Income/Expense
+                // Toggle
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12)),
@@ -193,7 +205,6 @@ class _EditTransaksiState extends State<EditTransaksi> {
                   ),
                 ),
                 const SizedBox(height: 25),
-                // Category Selector
                 const Text('Pilih Kategori', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 15),
                 if (_loadingKategori)
@@ -217,7 +228,6 @@ class _EditTransaksiState extends State<EditTransaksi> {
                     },
                   ),
                 const SizedBox(height: 25),
-                // Input Fields
                 _buildLabel('Jumlah'),
                 TextField(
                   controller: _jumlahController,
@@ -253,7 +263,6 @@ class _EditTransaksiState extends State<EditTransaksi> {
               ],
             ),
           ),
-          // Bottom Button
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -262,14 +271,14 @@ class _EditTransaksiState extends State<EditTransaksi> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isSaving ? null : _simpanTransaksi,
+                  onPressed: _isSaving ? null : _updateTransaksi,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isSaving 
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Simpan Transaksi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                    : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ),
@@ -279,11 +288,7 @@ class _EditTransaksiState extends State<EditTransaksi> {
     );
   }
 
-  // --- WIDGET HELPERS ---
-  Widget _buildLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: Colors.grey)),
-  );
+  Widget _buildLabel(String text) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: const TextStyle(color: Colors.grey)));
 
   InputDecoration _inputDecoration({String? prefix, String? hint}) {
     return InputDecoration(
@@ -303,7 +308,7 @@ class _EditTransaksiState extends State<EditTransaksi> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF131C2E) : Colors.transparent,
+            color: isActive ? const Color(0xFF0F172A) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
@@ -343,7 +348,6 @@ class _EditTransaksiState extends State<EditTransaksi> {
   }
 }
 
-// --- ICON DATA HELPER ---
 IconData getCategoryIcon(String? iconName) {
   switch (iconName) {
     case 'restaurant': return Icons.restaurant;
@@ -358,7 +362,6 @@ IconData getCategoryIcon(String? iconName) {
   }
 }
 
-// --- FORMATTER ---
 class CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {

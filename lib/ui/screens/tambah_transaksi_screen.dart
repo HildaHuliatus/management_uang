@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:management_uang/ui/provider/product_provider.dart';
-import 'package:provider/provider.dart'; // 1. Tambahkan import provider
+import 'package:provider/provider.dart'; 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TambahTransaksi extends StatefulWidget {
@@ -26,7 +26,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
 
   bool _isPengeluaran = true;
   bool _loadingKategori = true;
-  bool _isSaving = false; // Flag untuk loading tombol simpan
+  bool _isSaving = false; 
 
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
@@ -85,7 +85,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     }
   }
 
-  // --- LOGIKA SIMPAN TRANSAKSI ---
   Future<void> _simpanTransaksi() async {
     final cleanAmount = _jumlahController.text.replaceAll('.', '');
     if (cleanAmount.isEmpty || cleanAmount == '0') {
@@ -98,14 +97,12 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Ambil User ID
       final user = await supabase
           .from('tbl_user')
           .select('id')
           .eq('username', widget.username)
           .single();
 
-      // 2. Ambil Category ID
       final category = await supabase
           .from('tbl_category')
           .select('id')
@@ -113,7 +110,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
           .eq('type', _isPengeluaran ? 'expense' : 'income')
           .single();
 
-      // 3. Insert ke Tabel Transaction
       await supabase.from('tbl_transaction').insert({
         'user_id': user['id'],
         'category_id': category['id'],
@@ -123,8 +119,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
         'transaction_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
       });
 
-      // 4. UPDATE PROVIDER (PENTING!)
-      // Memanggil fetchDashboard agar data di HomeScreen langsung sinkron
       if (mounted) {
         await context.read<TransactionProvider>().fetchDashboard(widget.username);
         
@@ -169,7 +163,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Toggle Income/Expense
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12)),
@@ -277,7 +270,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     );
   }
 
-  // --- WIDGET HELPERS ---
   Widget _buildLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(text, style: const TextStyle(color: Colors.grey)),
@@ -341,7 +333,6 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
   }
 }
 
-// --- ICON DATA HELPER ---
 IconData getCategoryIcon(String? iconName) {
   switch (iconName) {
     case 'restaurant': return Icons.restaurant;
@@ -356,7 +347,6 @@ IconData getCategoryIcon(String? iconName) {
   }
 }
 
-// --- FORMATTER ---
 class CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {

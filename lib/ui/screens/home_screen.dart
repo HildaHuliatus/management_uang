@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:management_uang/ui/provider/product_provider.dart';
-import 'package:provider/provider.dart'; // Wajib ada
+import 'package:provider/provider.dart'; 
 import 'tambah_transaksi_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,13 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Meminta Provider untuk mengambil data pertama kali
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TransactionProvider>().fetchDashboard(widget.username);
     });
   }
 
-  // ================= ICON & COLOR HELPER =================
   IconData getCategoryIcon(String? iconName) {
     switch (iconName) {
       case 'restaurant': return Icons.restaurant;
@@ -66,8 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Menghubungkan UI dengan Provider
-    // Setiap kali Provider panggil notifyListeners(), widget ini akan build ulang
     final trxProv = context.watch<TransactionProvider>();
 
     return Scaffold(
@@ -121,17 +117,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Konten Utama
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // Saldo Card - Mengambil saldo dari Provider
                   _saldoCard(trxProv.saldo),
                   
                   const SizedBox(height: 20),
                   
-                  // Info Card Pemasukan & Pengeluaran
                   Row(
                     children: [
                       _infoCard('Pemasukan', rupiah.format(trxProv.pemasukan),
@@ -176,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ignore: unnecessary_to_list_in_spreads
                     }).toList(),
                   
-                  const SizedBox(height: 100), // Padding bawah agar tidak tertutup FAB
+                  const SizedBox(height: 100), 
                 ]),
               ),
             ),
@@ -186,7 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= WIDGET COMPONENTS =================
 
   Widget _saldoCard(double saldoValue) {
     return Container(

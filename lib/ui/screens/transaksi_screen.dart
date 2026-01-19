@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:management_uang/ui/provider/product_provider.dart';
+import 'package:provider/provider.dart'; // 1. Import Provider
 import 'tambah_transaksi_screen.dart';
+import 'edit_transaksi_screen.dart';
 
 class TransaksiScreen extends StatefulWidget {
   final String username;
@@ -11,8 +13,6 @@ class TransaksiScreen extends StatefulWidget {
 }
 
 class _TransaksiScreenState extends State<TransaksiScreen> {
-  final SupabaseClient supabase = Supabase.instance.client;
-
   // WARNA
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
@@ -20,113 +20,72 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
   final Color successGreen = const Color(0xFF10B981);
   final Color dangerRed = const Color(0xFFEF4444);
 
-  // FILTER
+  // FILTER (Tetap di State lokal karena hanya untuk kebutuhan UI filter di layar ini)
   String _selectedType = 'Semua';
   String _selectedCategory = 'Semua Kategori';
   String _search = '';
 
   final List<String> _types = ['Semua', 'Pengeluaran', 'Pemasukan'];
 
-  bool isLoading = true;
-
-  // DATA
-  List<Map<String, dynamic>> transaksi = [];
-  List<Map<String, dynamic>> kategoriList = [];
-
   @override
   void initState() {
     super.initState();
-    fetchKategori();
-    fetchTransaksi();
+    // Panggil fetch data dari Provider saat pertama kali buka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final trxProv = context.read<TransactionProvider>();
+      
+      // 1. Ambil data dashboard/transaksi
+      trxProv.fetchDashboard(widget.username);
+      
+      // 2. AMBIL DATA KATEGORI (Ini yang kurang tadi)
+      trxProv.fetchKategori(); 
+    });
   }
 
-  // ============================
-  // FETCH SEMUA KATEGORI
-  // ============================
-  Future<void> fetchKategori() async {
-    try {
-      final data = await supabase
-          .from('tbl_category')
-          .select('name, type');
+  // LOGIKA DROPDOWN KATEGORI
+  List<String> _getDropdownCategories(TransactionProvider trxProv) {
+    final masterKategori = trxProv.kategoriList;
 
-      setState(() {
-        kategoriList = List<Map<String, dynamic>>.from(data);
-      });
-    } catch (e) {
-      debugPrint('ERROR KATEGORI: $e');
-    }
-  }
-
-  // ============================
-  // FETCH TRANSAKSI USER
-  // ============================
-  Future<void> fetchTransaksi() async {
-    setState(() => isLoading = true); // Pastikan loading muncul saat refresh
-    try {
-      final user = await supabase
-          .from('tbl_user')
-          .select('id')
-          .eq('username', widget.username)
-          .single();
-
-      final data = await supabase
-          .from('tbl_transaction')
-          .select('''
-            amount,
-            description,
-            transaction_type,
-            transaction_date,
-            tbl_category(name, icon)
-          ''')
-          .eq('user_id', user['id'])
-          .order('transaction_date', ascending: false);
-
-      setState(() {
-        transaksi = List<Map<String, dynamic>>.from(data);
-        isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('ERROR TRANSAKSI: $e');
-      setState(() => isLoading = false);
-    }
-  }
-
-  // ============================
-  // DROPDOWN KATEGORI SESUAI TYPE
-  // ============================
-  List<String> _getDropdownCategories() {
-    final filtered = kategoriList.where((k) {
+    // 1. Filter berdasarkan tipe
+    final filteredList = masterKategori.where((k) {
       if (_selectedType == 'Pengeluaran') return k['type'] == 'expense';
       if (_selectedType == 'Pemasukan') return k['type'] == 'income';
-      return true;
-    });
+      return true; 
+    }).map((e) => e['name'] as String).toList();
 
-    return [
-      'Semua Kategori',
-      ...filtered.map((e) => e['name'] as String),
-    ];
+    // 2. MENGHILANGKAN DUPLIKASI NAMA
+    // .toSet() akan otomatis membuang nama yang sama
+    final uniqueCategories = filteredList.toSet().toList();
+
+    // 3. Urutkan secara abjad (opsional agar rapi)
+    uniqueCategories.sort();
+
+    return ['Semua Kategori', ...uniqueCategories];
   }
 
-  // ============================
-  // FILTER + SEARCH
-  // ============================
-  List<Map<String, dynamic>> get filteredTransaksi {
-    return transaksi.where((trx) {
+  @override
+  Widget build(BuildContext context) {
+    // 3. Listen ke TransactionProvider
+   final trxProv = context.watch<TransactionProvider>();
+    // 4. Logika Filter Client-Side
+    final filteredTransaksi = trxProv.semuaTransaksi.where((trx) {
       final type = trx['transaction_type'];
-      final category = trx['tbl_category']['name'].toString().toLowerCase();
+      final categoryName = trx['tbl_category']['name'].toString();
       final desc = (trx['description'] ?? '').toString().toLowerCase();
-      final amount = trx['amount'].toString().toLowerCase();
+      final amount = trx['amount'].toString();
 
+      // Filter Tipe
       if (_selectedType == 'Pengeluaran' && type != 'expense') return false;
       if (_selectedType == 'Pemasukan' && type != 'income') return false;
 
-      if (_selectedCategory != 'Semua Kategori' &&
-          _selectedCategory != trx['tbl_category']['name']) {
+      // Filter Kategori
+      if (_selectedCategory != 'Semua Kategori' && _selectedCategory != categoryName) {
         return false;
       }
 
+      // Filter Search
       if (_search.isNotEmpty &&
-          !category.contains(_search) &&
+          !categoryName.toLowerCase().contains(_search) &&
           !desc.contains(_search) &&
           !amount.contains(_search)) {
         return false;
@@ -134,10 +93,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
       return true;
     }).toList();
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
@@ -149,24 +105,21 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
         ),
         centerTitle: true,
       ),
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: primaryBlue,
         child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () async {
-          await Navigator.push(
+        onPressed: () {
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => TambahTransaksi(username: widget.username),
             ),
           );
-          fetchTransaksi(); // Memanggil ulang data setelah kembali
         },
       ),
-
       body: Column(
         children: [
-          // SEARCH
+          // SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -186,7 +139,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
             ),
           ),
 
-          // FILTER FULL WIDTH
+          // FILTER ROW
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -207,9 +160,9 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
                 Expanded(
                   child: _buildFilterDropdown(
                     value: _selectedCategory,
-                    items: _getDropdownCategories(),
-                    onChanged: (val) =>
-                        setState(() => _selectedCategory = val!),
+                    // Gunakan fungsi baru di sini
+                    items: _getDropdownCategories(trxProv), 
+                    onChanged: (val) => setState(() => _selectedCategory = val!),
                   ),
                 ),
               ],
@@ -218,38 +171,71 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
           const SizedBox(height: 10),
 
-          // LIST
+          // LIST DATA
           Expanded(
-            child: isLoading
+            child: trxProv.isLoading && trxProv.semuaTransaksi.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : filteredTransaksi.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Data tidak ada',
-                          style:
-                              TextStyle(color: Colors.white54, fontSize: 14),
-                        ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: filteredTransaksi.map((trx) {
-                          final cat = trx['tbl_category'];
-                          final iconData =
-                              getCategoryIcon(cat['icon'] as String?);
-                          final income =
-                              trx['transaction_type'] == 'income';
+                : RefreshIndicator(
+                    onRefresh: () => trxProv.fetchDashboard(widget.username),
+                    child: filteredTransaksi.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Data tidak ditemukan',
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredTransaksi.length,
+                            itemBuilder: (context, index) {
+                              final trx = filteredTransaksi[index];
+                              final cat = trx['tbl_category'];
+                              final iconInfo = getCategoryIcon(cat['icon']);
+                              final isIncome = trx['transaction_type'] == 'income';
 
-                          return _buildTransactionItem(
-                            cat['name'],
-                            trx['description'] ?? '',
-                            '${income ? '+' : '-'}Rp ${trx['amount']}',
-                            trx['transaction_date'],
-                            iconData.icon,
-                            income ? successGreen : dangerRed,
-                            iconData.color,
-                          );
-                        }).toList(),
-                      ),
+                              return Dismissible(
+                                key: Key(trx['id'].toString()),
+                                direction: DismissDirection.endToStart,
+                                confirmDismiss: (direction) async {
+                                  // Tambahkan konfirmasi hapus jika perlu
+                                  return true;
+                                },
+                                onDismissed: (direction) {
+                                  context.read<TransactionProvider>().deleteTransaction(trx['id'], widget.username);
+                                },
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(Icons.delete, color: Colors.white),
+                                ),
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => EditTransaksi(
+                                          username: widget.username,
+                                          existingTrx: trx,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: _buildTransactionItem(
+                                    cat['name'],
+                                    trx['description'] ?? '',
+                                    '${isIncome ? '+' : '-'}Rp ${trx['amount']}',
+                                    trx['transaction_date'].toString(),
+                                    iconInfo.icon,
+                                    isIncome ? successGreen : dangerRed,
+                                    iconInfo.color,
+                                  ),
+                                ),
+                              );
+                              
+                            },
+                          ),
+                  ),
           ),
         ],
       ),
@@ -257,7 +243,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
   }
 
   // ============================
-  // UI COMPONENT
+  // UI COMPONENTS
   // ============================
   Widget _buildFilterDropdown({
     required String value,
@@ -277,38 +263,33 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
           isExpanded: true,
           value: safeValue,
           dropdownColor: cardColor,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: Colors.white70),
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           onChanged: onChanged,
-          items: items
-              .map((val) =>
-                  DropdownMenuItem(value: val, child: Text(val)))
-              .toList(),
+          items: items.map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
         ),
       ),
     );
   }
 
   Widget _buildTransactionItem(
-    String title,
-    String sub,
-    String amount,
-    String time,
-    IconData icon,
-    Color amountColor,
-    Color iconColor,
+    String title, String sub, String amount, String time,
+    IconData icon, Color amountColor, Color iconColor,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               // ignore: deprecated_member_use
-              color: iconColor.withOpacity(0.15),
+              color: iconColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor),
@@ -318,30 +299,20 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 2),
-                Text(sub,
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 13)),
-              ],
+                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text(
+                      sub, // Ini adalah deskripsi
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      maxLines: 2, // Ubah dari 1 ke 2 atau lebih
+                      overflow: TextOverflow.visible, // Biarkan teks turun jika panjang
+                    ),              ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(amount,
-                  style: TextStyle(
-                      color: amountColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(time,
-                  style: const TextStyle(
-                      color: Colors.white38, fontSize: 12)),
+              Text(amount, style: TextStyle(color: amountColor, fontWeight: FontWeight.bold)),
+              Text(time, style: const TextStyle(color: Colors.white38, fontSize: 11)),
             ],
           ),
         ],
@@ -350,9 +321,7 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
   }
 }
 
-// ============================
-// ICON + WARNA KATEGORI
-// ============================
+// HELPER UNTUK ICON
 class CategoryIcon {
   final IconData icon;
   final Color color;
@@ -361,25 +330,14 @@ class CategoryIcon {
 
 CategoryIcon getCategoryIcon(String? iconName) {
   switch (iconName) {
-    case 'restaurant':
-      return CategoryIcon(Icons.restaurant, Colors.orange);
-    case 'wifi':
-      return CategoryIcon(Icons.wifi, Colors.blue);
-    case 'movie':
-      return CategoryIcon(Icons.movie, Colors.purple);
-    case 'shopping_bag':
-      return CategoryIcon(Icons.shopping_bag, Colors.pink);
-    case 'attach_money':
-      return CategoryIcon(Icons.attach_money, Colors.green);
-    case 'bolt':
-      return CategoryIcon(Icons.bolt, Colors.yellow);
-    case 'directions_car':
-      return CategoryIcon(Icons.directions_car, Colors.red);
-    case 'account_balance_wallet':
-      return CategoryIcon(Icons.account_balance_wallet, Colors.teal);
-    case 'lainnya':
-      return CategoryIcon(Icons.more_horiz, Colors.grey);
-    default:
-      return CategoryIcon(Icons.category_outlined, Colors.grey);
+    case 'restaurant': return CategoryIcon(Icons.restaurant, Colors.orange);
+    case 'wifi': return CategoryIcon(Icons.wifi, Colors.blue);
+    case 'movie': return CategoryIcon(Icons.movie, Colors.purple);
+    case 'shopping_bag': return CategoryIcon(Icons.shopping_bag, Colors.pink);
+    case 'attach_money': return CategoryIcon(Icons.attach_money, Colors.green);
+    case 'bolt': return CategoryIcon(Icons.bolt, Colors.yellow);
+    case 'directions_car': return CategoryIcon(Icons.directions_car, Colors.red);
+    case 'account_balance_wallet': return CategoryIcon(Icons.account_balance_wallet, Colors.teal);
+    default: return CategoryIcon(Icons.more_horiz, Colors.grey);
   }
 }

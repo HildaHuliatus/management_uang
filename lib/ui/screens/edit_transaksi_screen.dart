@@ -5,19 +5,21 @@ import 'package:management_uang/ui/provider/product_provider.dart';
 import 'package:provider/provider.dart'; // 1. Tambahkan import provider
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class TambahTransaksi extends StatefulWidget {
+class EditTransaksi extends StatefulWidget {
   final String username;
+  final Map<String, dynamic> existingTrx;
 
-  const TambahTransaksi({
+  const EditTransaksi({
     super.key,
     required this.username,
+    required this.existingTrx
   });
 
   @override
-  State<TambahTransaksi> createState() => _TambahTransaksiState();
+  State<EditTransaksi> createState() => _EditTransaksiState();
 }
 
-class _TambahTransaksiState extends State<TambahTransaksi> {
+class _EditTransaksiState extends State<EditTransaksi> {
   final SupabaseClient supabase = Supabase.instance.client;
 
   final Color scaffoldBg = const Color(0xFF0F172A);

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+//import 'package:intl/intl.dart';
 // ignore: unused_import
 import 'dart:math';
+enum LaporanPeriode { mingguan, bulanan, tahunan }
+
 
 class TransactionProvider with ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -18,7 +21,6 @@ class TransactionProvider with ChangeNotifier {
   List<Map<String, dynamic>> kategoriList = [];
   List<Map<String, dynamic>> dataLaporanTerolah = [];
 
-  // --- Helper: Icon Kategori ---
   IconData getCategoryIcon(String? iconName) {
     switch (iconName) {
       case 'restaurant': return Icons.restaurant;
@@ -33,7 +35,6 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-  // --- Helper: Warna Kategori ---
   Color getCategoryColor(String? iconName) {
     switch (iconName) {
       case 'restaurant': return Colors.orange;
@@ -116,72 +117,99 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-  // Variabel baru untuk menyimpan hasil olahan laporan
   
+  DateTime _getStartDate(LaporanPeriode periode) {
+    final now = DateTime.now();
 
-  Future<void> fetchLaporan(String username, {bool silent = false}) async {
+    switch (periode) {
+      case LaporanPeriode.mingguan:
+        // Senin minggu ini
+        return now.subtract(Duration(days: now.weekday - 1));
+
+      case LaporanPeriode.bulanan:
+        return DateTime(now.year, now.month, 1);
+
+      case LaporanPeriode.tahunan:
+        return DateTime(now.year, 1, 1);
+    }
+  }
+
+  Future<void> fetchLaporan(
+  String username, {
+  LaporanPeriode periode = LaporanPeriode.bulanan,
+  bool silent = false,
+}) async {
+  if (!silent) {
+    isLoading = true;
+    notifyListeners();
+  }
+
+  // RESET STATE
+  dataLaporanTerolah = [];
+  pengeluaran = 0;
+
+  try {
+    final startDate = _getStartDate(periode);
+
+    final user = await _supabase
+        .from('tbl_user')
+        .select('id')
+        .eq('username', username)
+        .single();
+
+    final response = await _supabase
+        .from('tbl_transaction')
+        .select('amount, transaction_date, tbl_category(name, icon)')
+        .eq('user_id', user['id'])
+        .eq('transaction_type', 'expense')
+        .gte('transaction_date', startDate.toIso8601String());
+
+    final rawData = List<Map<String, dynamic>>.from(response);
+
+    Map<String, double> groupedData = {};
+    Map<String, String?> categoryIcons = {};
+    double totalPengeluaranLaporan = 0;
+
+    for (var t in rawData) {
+      final cat = t['tbl_category'];
+      final name = cat != null ? cat['name'] : 'Lain-lain';
+      final amount = (t['amount'] as num).toDouble();
+
+      totalPengeluaranLaporan += amount;
+      groupedData[name] = (groupedData[name] ?? 0) + amount;
+      categoryIcons[name] = cat?['icon'];
+    }
+
+    final resultList = groupedData.entries.map((entry) {
+      final fraction = totalPengeluaranLaporan > 0
+          ? entry.value / totalPengeluaranLaporan
+          : 0;
+
+      return {
+        'title': entry.key,
+        'amount': entry.value,
+        'fraction': fraction,
+        'subtitle': "${(fraction * 100).toStringAsFixed(0)}%",
+        'icon': getCategoryIcon(categoryIcons[entry.key]),
+        'color': getCategoryColor(categoryIcons[entry.key]),
+      };
+    }).toList()
+      ..sort((a, b) =>
+          (b['amount'] as num).compareTo(a['amount'] as num));
+
+    dataLaporanTerolah = resultList;
+    pengeluaran = totalPengeluaranLaporan;
+
+  } catch (e) {
+    debugPrint("Error Laporan: $e");
+  } finally {
     if (!silent) {
-      isLoading = true;
+      isLoading = false;
       notifyListeners();
     }
+  }
+}
 
-    dataLaporanTerolah = [];
-
-    try {
-      final user = await _supabase.from('tbl_user').select('id').eq('username', username).single();
-      
-      final response = await _supabase
-          .from('tbl_transaction')
-          .select('amount, tbl_category(name, icon)')
-          .eq('user_id', user['id'])
-          .eq('transaction_type', 'expense');
-
-      final rawData = List<Map<String, dynamic>>.from(response);
-
-      Map<String, double> groupedData = {};
-      Map<String, String?> categoryIcons = {};
-      double totalPengeluaranLaporan = 0;
-
-      for (var t in rawData) {
-        final cat = t['tbl_category'];
-        final String name = cat != null ? cat['name'] : 'Lain-lain';
-        final double amount = (t['amount'] as num).toDouble();
-
-        totalPengeluaranLaporan += amount;
-        groupedData[name] = (groupedData[name] ?? 0) + amount;
-        categoryIcons[name] = cat != null ? cat['icon'] : null;
-      }
-
-      // Perbaikan Sorting: Pastikan casting ke num agar compareTo berfungsi
-      var resultList = groupedData.entries.map((entry) {
-        final iconStr = categoryIcons[entry.key];
-        double fraction = totalPengeluaranLaporan > 0 ? (entry.value / totalPengeluaranLaporan) : 0;
-        
-        return {
-          'title': entry.key,
-          'amount': entry.value, // Ini double
-          'fraction': fraction,
-          'subtitle': "${(fraction * 100).toStringAsFixed(0)}% dari total",
-          'icon': getCategoryIcon(iconStr),
-          'color': getCategoryColor(iconStr),
-        };
-      }).toList();
-
-      // Memperbaiki error .compareTo dengan casting eksplisit
-      resultList.sort((a, b) => (b['amount'] as num).compareTo(a['amount'] as num));
-
-      dataLaporanTerolah = resultList;
-      pengeluaran = totalPengeluaranLaporan;
-
-    } catch (e) {
-      debugPrint("Error Laporan: $e");
-    } finally {
-      if (!silent) {
-        isLoading = false;
-        notifyListeners();
-      }
-    }
-  } 
 
   Future<void> refreshAll(String username) async {
     isLoading = true;

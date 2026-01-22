@@ -13,16 +13,33 @@ class LaporanScreen extends StatefulWidget {
 }
 
 class _LaporanScreenState extends State<LaporanScreen> {
+  LaporanPeriode _periodeAktif = LaporanPeriode.bulanan;
+  String getPeriodeLabel(LaporanPeriode periode) {
+    switch (periode) {
+      case LaporanPeriode.mingguan:
+        return "Minggu Ini";
+      case LaporanPeriode.tahunan:
+        return "Tahun Ini";
+      case LaporanPeriode.bulanan:
+        return "Bulan Ini";
+    }
+  }
+
+
   @override
   void initState() {
     super.initState();
-    // Panggil data saat halaman dibuka
-    Future.microtask(() =>
+    Future.microtask(() {
       // ignore: use_build_context_synchronously
-      context.read<TransactionProvider>().fetchLaporan(widget.username)
-    );
+      context.read<TransactionProvider>().fetchLaporan(
+        widget.username,
+        periode: _periodeAktif,
+      );
+    });
   }
 
+
+  
   final Color scaffoldBg = const Color(0xFF0F172A);
   final Color cardColor = const Color(0xFF1E293B);
 
@@ -65,13 +82,17 @@ class _LaporanScreenState extends State<LaporanScreen> {
                         size: const Size(220, 220),
                         painter: DoughnutChartPainter(data: laporan),
                       ),
-                      const Column(
+                      Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text("Bulan Ini", style: TextStyle(color: Colors.white54)),
-                          Icon(Icons.analytics_outlined, color: Colors.blueAccent, size: 30),
+                          Text(
+                            getPeriodeLabel(_periodeAktif),
+                            style: const TextStyle(color: Colors.white54),
+                          ),
+                          const Icon(Icons.analytics_outlined, color: Colors.blueAccent, size: 30),
                         ],
                       ),
+
                     ],
                   ),
                 ),
@@ -105,24 +126,20 @@ class _LaporanScreenState extends State<LaporanScreen> {
   Widget _buildTimeTabSelector() {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: const Color(0xFF131C2F), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131C2F),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        children: ["Mingguan", "Bulanan", "Tahunan"].map((e) {
-          bool active = e == "Bulanan";
-          return Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: active ? cardColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(child: Text(e, style: TextStyle(color: active ? Colors.white : Colors.white38))),
-            ),
-          );
-        }).toList(),
+        children: [
+          _timeTab("Mingguan", LaporanPeriode.mingguan),
+          _timeTab("Bulanan", LaporanPeriode.bulanan),
+          _timeTab("Tahunan", LaporanPeriode.tahunan),
+        ],
       ),
     );
   }
+
 
   Widget _buildCategoryRow(Map<String, dynamic> item, NumberFormat format) {
     return Container(
@@ -166,6 +183,39 @@ class _LaporanScreenState extends State<LaporanScreen> {
       ),
     );
   }
+
+  Widget _timeTab(String label, LaporanPeriode periode) {
+    final active = _periodeAktif == periode;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() => _periodeAktif = periode);
+          context.read<TransactionProvider>().fetchLaporan(
+            widget.username,
+            periode: periode,
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: active ? cardColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: active ? Colors.white : Colors.white38,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
 
 class DoughnutChartPainter extends CustomPainter {
@@ -204,6 +254,8 @@ class DoughnutChartPainter extends CustomPainter {
       startAngle += sweepAngle;
     }
   }
+
+  
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;

@@ -32,7 +32,7 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> screens = [
       HomeScreen(username: widget.username), 
       TransaksiScreen(username: widget.username),
-      const LaporanScreen(),
+      LaporanScreen(username: widget.username),
     ];
 
     return Scaffold(

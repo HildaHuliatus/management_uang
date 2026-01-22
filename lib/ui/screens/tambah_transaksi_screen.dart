@@ -120,7 +120,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
       });
 
       if (mounted) {
-        await context.read<TransactionProvider>().fetchDashboard(widget.username);
+        await context.read<TransactionProvider>().refreshAll(widget.username);
         
         // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(

@@ -138,7 +138,7 @@ class _EditTransaksiState extends State<EditTransaksi> {
       if (response != null && response.isNotEmpty) {
         debugPrint("Update Berhasil di Supabase!");
         if (mounted) {
-          await context.read<TransactionProvider>().fetchDashboard(widget.username);
+          await context.read<TransactionProvider>().refreshAll(widget.username);
           // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Transaksi berhasil diperbarui'))

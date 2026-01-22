@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'package:management_uang/ui/provider/product_provider.dart';
+import 'package:management_uang/ui/screens/laporan_pdf.dart';
 
 class LaporanScreen extends StatefulWidget {
   final String username;
@@ -170,19 +171,35 @@ class _LaporanScreenState extends State<LaporanScreen> {
   }
 
   Widget _buildDownloadButton() {
-    return SizedBox(
-      width: double.infinity, height: 55,
-      child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.file_download_outlined),
-        label: const Text("Unduh Laporan PDF"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red, foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+  return SizedBox(
+    width: double.infinity,
+    height: 55,
+    child: ElevatedButton.icon(
+      onPressed: () {
+        final provider = context.read<TransactionProvider>();
+
+        generateLaporanPdf(
+          namaUser: provider.fullName,
+          
+          pemasukan: provider.pemasukan,
+          pengeluaran: provider.pengeluaran,
+          saldo: provider.saldo,
+          kategori: provider.dataLaporanTerolah,
+          transaksi: provider.semuaTransaksi,
+        );
+      },
+      icon: const Icon(Icons.file_download_outlined),
+      label: const Text("Unduh Laporan PDF"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   Widget _timeTab(String label, LaporanPeriode periode) {
     final active = _periodeAktif == periode;

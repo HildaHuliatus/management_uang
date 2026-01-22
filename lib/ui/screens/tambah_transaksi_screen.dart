@@ -64,6 +64,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
         final map = {
           'nama': item['name'],
           'icon': getCategoryIcon(item['icon']),
+          'color': getCategoryColor(item['icon']),
         };
 
         if (item['type'] == 'expense') {
@@ -203,8 +204,14 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
                       final item = kategoriAktif[index];
                       return GestureDetector(
                         onTap: () => setState(() => _selectedCategory = item['nama']),
-                        child: _buildCategoryItem(item['icon'], item['nama'], isSelected: _selectedCategory == item['nama']),
+                        child: _buildCategoryItem(
+                          item['icon'],
+                          item['nama'],
+                          color: item['color'], // <--- kirim warna
+                          isSelected: _selectedCategory == item['nama'],
+                        ),
                       );
+
                     },
                   ),
                 const SizedBox(height: 25),
@@ -304,7 +311,7 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
     );
   }
 
-  Widget _buildCategoryItem(IconData icon, String label, {bool isSelected = false}) {
+  Widget _buildCategoryItem(IconData icon, String label, {Color? color, bool isSelected = false}) {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
@@ -314,13 +321,14 @@ class _TambahTransaksiState extends State<TambahTransaksi> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: isSelected ? Colors.white : Colors.blueGrey, size: 28),
+          Icon(icon, color: isSelected ? Colors.white : (color ?? Colors.blueGrey), size: 28),
           const SizedBox(height: 8),
           Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 12)),
         ],
       ),
     );
   }
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -346,6 +354,21 @@ IconData getCategoryIcon(String? iconName) {
     default: return Icons.more_horiz;
   }
 }
+
+Color getCategoryColor(String? iconName) {
+  switch (iconName) {
+    case 'restaurant': return Colors.orange;
+    case 'wifi': return Colors.blue;
+    case 'movie': return Colors.deepPurple;
+    case 'shopping_bag': return Colors.pink;
+    case 'attach_money': return Colors.green;
+    case 'bolt': return Colors.amber;
+    case 'directions_car': return Colors.lightBlue;
+    case 'account_balance_wallet': return Colors.teal;
+    default: return Colors.grey;
+  }
+}
+
 
 class CurrencyInputFormatter extends TextInputFormatter {
   @override
